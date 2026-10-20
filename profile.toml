@@ -1,0 +1,61 @@
+# Search profile built from the CV (CV-GracielaGallas-EN.pdf).
+# Edit freely: every run of search.py reads this file.
+
+[search]
+days = 14                 # only jobs published in the last N days
+city = "Berlin"
+radius_km = 30
+include_remote_germany = true
+
+# Search terms sent to the portals (one request per term and portal).
+queries = [
+  "QA Engineer",
+  "Senior QA Engineer",
+  "Test Automation Engineer",
+  "QA Lead",
+  "SDET",
+  "Quality Assurance Engineer",
+  "Testautomatisierung",
+  "Softwaretester",
+]
+
+[filter]
+# Titles that clearly mean software QA: always kept.
+title_strong = [
+  '\bqa\b', 'quality engineer', 'test ?automation', 'testautomatisierung',
+  'automation engineer', '\bsdet\b', 'software ?test', 'test ?engineer',
+  'test ?analyst', 'test ?lead', 'software development engineer in test',
+]
+# Generic QA/test titles (also used for factory/lab QA in Germany): kept only when
+# the title or description also mentions one of the `software_signal` words.
+title_weak = [
+  'quality assurance', 'qualit[äa]tssicherung', 'test ?manager', '\btester\b', 'testing',
+]
+software_signal = [
+  'software', '\bweb', '\bapps?\b', '\bapi', 'automation', 'automatisierung',
+  '\bsap\b', 'digital', 'platform', 'saas', 'agile', 'scrum',
+]
+# Titles containing any of these are dropped.
+title_none = [
+  'werkstudent', 'working student', 'praktik', 'intern\b', 'internship',
+  'junior', 'ausbildung', 'azubi', 'trainee', 'duales studium', 'abschlussarbeit',
+  'thesis', 'hardware', 'mechani', 'fahrzeug', 'lebensmittel', 'pharma', '\bgmp\b',
+  '\blabor', 'elektro', 'electrical', 'medizinprodukt', 'chemi', 'penetration',
+  'pentest', 'client service', 'customer service',
+]
+
+[score]
+# Extra points when the title signals the level you are aiming for.
+seniority = ['senior', '\blead\b', 'team ?lead', 'head of', 'principal', 'staff', 'sr\.?\b', 'leitung', 'manager']
+# Skills from the CV: each one found in title/description adds points.
+skills = [
+  'playwright', 'typescript', 'java\b', 'selenium', 'rest ?assured', 'cypress',
+  '\bapi', 'ci/cd', 'javascript', 'junit', 'istqb', 'testrail', 'mobile',
+  'accessibility', 'shift.?left', 'postman',
+]
+# Phrases that mean fluent German is required (your German is B1).
+german_required = [
+  'flie(ß|ss)end(e|en)? deutsch', 'verhandlungssicher', 'deutsch(kenntnisse)? (auf )?c1',
+  'sehr gute deutschkenntnisse', 'fluent (in )?german', 'german.{0,20}(c1|c2|native)',
+  'deutsch als muttersprache', 'business fluent german',
+]

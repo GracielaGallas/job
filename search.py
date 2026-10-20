@@ -309,6 +309,8 @@ def main() -> int:
     ap.add_argument("--berlin-only", action="store_true")
     ap.add_argument("--min-score", type=int, default=0)
     ap.add_argument("--sources", help="comma-separated, e.g. LinkedIn,XING")
+    ap.add_argument("--extra", action="append", metavar="FILE",
+                    help="JSON list of extra jobs (see browser/README.md); repeatable")
     args = ap.parse_args()
 
     cfg = tomllib.loads((ROOT / "profile.toml").read_text())
@@ -328,6 +330,14 @@ def main() -> int:
         except Exception as e:
             errors[name] = f"{type(e).__name__}: {e}"
             print(f"  falhou: {errors[name]}", file=sys.stderr)
+
+    # Jobs collected by hand or in a real browser (Indeed, Glassdoor, GermanTechJobs).
+    for path in args.extra or []:
+        for j in json.loads(Path(path).read_text()):
+            published = j.get("published")
+            job = Job(**{**j, "published": date.fromisoformat(published) if published else None})
+            counts[job.source] = counts.get(job.source, 0) + 1
+            jobs.append(job)
 
     jobs = dedupe(score_jobs(jobs, cfg))
     if args.remote_only:

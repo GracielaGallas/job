@@ -5,7 +5,7 @@ Personal job search for Graciela (Senior QA Engineer / QA Lead, Berlin). See `RE
 ## When asked to "run the search" ("roda a busca", "busca vagas", ...)
 
 1. `python3 search.py` with flags matching the request (`--days`, `--berlin-only`,
-   `--remote-only`, `--min-score`, `--sources`). It takes ~2 minutes.
+   `--remote-only`, `--min-score`, `--sources`). It takes ~2–3 minutes (it also reads each job description).
 2. Read `results/<today>.md` and reply in Portuguese with the best matches first
    (title as a markdown link, company, location, why it fits), highlighting 🆕 jobs and
    flagging ones that need fluent German. Don't paste all rows: top ~15, then mention

@@ -37,6 +37,11 @@ Tudo que define a busca está em `profile.toml` e pode ser editado:
   Títulos genéricos ("Qualitätssicherung", "Test Manager") só entram quando há sinal de
   software, para não trazer QA de fábrica ou laboratório.
 - **title_none**: descarta júnior, estágio, Werkstudent, hardware, pharma etc.
-- **score** (0–100): base 40, sênior/lead +15, skills do CV +5 cada (até 25),
-  Berlim ou remoto +10, vaga recente até +7, descrição em inglês +3, e
-  −25 quando a vaga pede alemão fluente.
+- **exclude**: lido na descrição de cada vaga (o script abre a vaga no LinkedIn, XING e
+  Bundesagentur). A vaga sai quando pede alemão fluente/C1+, carteira de motorista, ou
+  quando é fora de Berlim e híbrida/presencial (ou não diz que é remota). As descartadas
+  aparecem no fim do resultado com o trecho que causou a exclusão.
+- **score** (0–100): base 50, sênior/lead +15, skills do CV +5 cada (até 25), vaga recente
+  até +7, descrição em inglês +3.
+
+O resultado é uma lista em três faixas (80+, 65–79, abaixo de 65), legível no GitHub e no celular.

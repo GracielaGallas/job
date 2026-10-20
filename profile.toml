@@ -41,7 +41,7 @@ title_none = [
   'junior', 'ausbildung', 'azubi', 'trainee', 'duales studium', 'abschlussarbeit',
   'thesis', 'hardware', 'mechani', 'fahrzeug', 'lebensmittel', 'pharma', '\bgmp\b',
   '\blabor', 'elektro', 'electrical', 'medizinprodukt', 'chemi', 'penetration',
-  'pentest', 'client service', 'customer service',
+  'pentest', 'client service', 'customer service', 'absolvent', 'graduate',
 ]
 
 [score]
@@ -53,9 +53,39 @@ skills = [
   '\bapi', 'ci/cd', 'javascript', 'junit', 'istqb', 'testrail', 'mobile',
   'accessibility', 'shift.?left', 'postman',
 ]
-# Phrases that mean fluent German is required (your German is B1).
+
+[exclude]
+# Jobs whose description matches any of these are left out (and listed at the end of the
+# results with the reason). Matching is case-insensitive.
+
+# Fluent / C1+ German required (your German is B1).
 german_required = [
-  'flie(ß|ss)end(e|en)? deutsch', 'verhandlungssicher', 'deutsch(kenntnisse)? (auf )?c1',
-  'sehr gute deutschkenntnisse', 'fluent (in )?german', 'german.{0,20}(c1|c2|native)',
-  'deutsch als muttersprache', 'business fluent german',
+  'flie(ß|ss)end(e|en|es)?\s+deutsch', 'deutsch\w*\s+(\w+\s+)?flie(ß|ss)end',
+  'verhandlungssicher', 'muttersprach', 'native german', 'german native',
+  'deutsch[^.;\n]{0,100}\b[c][12]\b', '\b[c][12]\b[^.;\n]{0,40}deutsch',
+  '(sehr )?gute[n]? deutschkenntnisse', 'deutschkenntnisse[^.;\n]{0,30}(sehr gut|gut|sicher|flie)',
+  'beherrschst deutsch', '(kommunizierst|sprichst|schreibst)[^.;\n]{0,20}sicher[^.;\n]{0,10}deutsch',
+  'deutsch und englisch[^.;\n]{0,40}(sehr gut|gut|flie|verhandlungs|sicher)',
+  'fluent (in )?german', 'fluency in german', 'german[^.;\n]{0,40}\b(c1|c2|native|fluent|fluency|proficien)',
+  '(good|very good|excellent|strong|professional|business|solid)\s+(command of |knowledge of |level of )?german\b(?!\s+(class|course|lesson))',
+  'german (and|&) english (skills|communication|language)',
 ]
+
+# Driving licence required (you don't have one).
+driving_license = [
+  'f(ü|ue)hrerschein', 'fahrerlaubnis', "driv(ing|er'?s) licen[cs]e", '\bklasse b\b',
+]
+
+# Outside your city only fully remote jobs fit. A job outside the city is left out when
+# its description mentions hybrid/on-site work without also saying it is fully remote,
+# or when it does not mention remote work at all.
+onsite = [
+  'hybrid', 'vor ort', 'on-?site', 'in[- ]office', 'im b(ü|ue)ro', 'präsenz',
+  'days? (per|a) week (in|at) (the|our) office', 'tage (pro|die|in der) woche (im|vor)',
+]
+full_remote = [
+  'fully remote', 'full[- ]remote', '100 ?% remote', 'remote[- ]first', 'remote only',
+  'vollst(ä|ae)ndig remote', 'komplett remote', 'ortsunabh(ä|ae)ngig', 'work from anywhere',
+  '100 ?% (home ?office|mobil)', 'deutschlandweit',
+]
+remote_words = ['remote', 'home ?office', 'mobiles arbeiten', 'mobil arbeiten']

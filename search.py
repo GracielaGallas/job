@@ -13,6 +13,7 @@ guest search), XING (public search page). Standard library only.
 """
 
 import argparse
+import base64
 import html
 import json
 import re
@@ -21,6 +22,7 @@ import time
 import tomllib
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -42,6 +44,8 @@ class Job:
     description: str = ""
     score: int = 0
     reasons: list[str] = field(default_factory=list)
+    also_on: list[str] = field(default_factory=list)
+    excluded: str = ""
     new: bool = False
 
     @property
@@ -199,76 +203,142 @@ SOURCES = {"Bundesagentur": bundesagentur, "Arbeitnow": arbeitnow,
            "LinkedIn": linkedin, "XING": xing}
 
 
-# --- scoring -----------------------------------------------------------------
+# --- descriptions ------------------------------------------------------------
+# LinkedIn, XING and Bundesagentur search results carry no description, and the
+# exclusion rules (German level, driving licence, hybrid) need one.
+
+def describe_linkedin(job: Job) -> str:
+    job_id = re.search(r"(\d+)/?$", job.url).group(1)
+    page = fetch(f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}")
+    m = re.search(r"show-more-less-html__markup[^>]*>(.*?)</div>", page, re.S)
+    return strip_html(m.group(1)) if m else ""
+
+
+def describe_xing(job: Job) -> str:
+    page = fetch(job.url)
+    m = re.search(r'"@type":"JobPosting".*?"description":("(?:[^"\\]|\\.)*")', page, re.S)
+    return strip_html(json.loads(m.group(1))) if m else ""
+
+
+def describe_bundesagentur(job: Job) -> str:
+    refnr = base64.b64encode(job.url.rsplit("/", 1)[1].encode()).decode()
+    data = json.loads(fetch(
+        f"https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/jobdetails/{refnr}",
+        {"X-API-Key": "jobboerse-jobsuche"}))
+    return data.get("stellenangebotsBeschreibung") or ""
+
+
+DESCRIBERS = {"LinkedIn": describe_linkedin, "XING": describe_xing,
+              "Bundesagentur": describe_bundesagentur}
+
+
+def add_descriptions(jobs: list[Job]) -> None:
+    def work(job: Job) -> None:
+        try:
+            job.description = DESCRIBERS[job.source](job)
+        except Exception:
+            pass  # the job stays, flagged as "descrição indisponível"
+
+    todo = [j for j in jobs if not j.description and j.source in DESCRIBERS]
+    print(f"lendo {len(todo)} descrições...", file=sys.stderr)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(work, todo))
+    for job in jobs:
+        job.description = re.sub(r"\s+", " ", job.description).strip()
+
+
+# --- filtering and scoring ---------------------------------------------------
 
 def compile_all(patterns):
     return [re.compile(p, re.I) for p in patterns]
 
 
-def score_jobs(jobs: list[Job], cfg) -> list[Job]:
+def in_city(job: Job, cfg) -> bool:
+    return cfg["search"]["city"].lower() in job.location.lower()
+
+
+def prefilter(jobs: list[Job], cfg) -> list[Job]:
+    """Cheap checks on title and location, before fetching descriptions."""
     f = cfg["filter"]
     title_strong, title_weak = compile_all(f["title_strong"]), compile_all(f["title_weak"])
     software = compile_all(f["software_signal"])
     title_none = compile_all(f["title_none"])
-    seniority = compile_all(cfg["score"]["seniority"])
-    skills = {p: re.compile(p, re.I) for p in cfg["score"]["skills"]}
-    german = compile_all(cfg["score"]["german_required"])
-    city = cfg["search"]["city"].lower()
-    today = date.today()
-
     kept = []
     for job in jobs:
-        text = f"{job.title} {job.description}"
         if any(p.search(job.title) for p in title_none):
             continue
         if not any(p.search(job.title) for p in title_strong):
             weak = any(p.search(job.title) for p in title_weak)
+            text = f"{job.title} {job.description}"
             if not (weak and any(p.search(text) for p in software)):
                 continue
         # Arbeitnow also lists jobs from its Swiss/Dutch/Austrian sites.
         if re.match(r"https://www\.arbeitnow\.(?!com/)", job.url):
             continue
-        in_city = city in job.location.lower()
-        remote = job.remote or "remote" in job.location.lower()
-        if not in_city and not remote:
+        if not in_city(job, cfg) and not job.remote and "remote" not in job.location.lower():
             continue
-
-        # Score 0-100: base 40, seniority 15, skills 25, location 10, freshness 7, English 3.
-        score, reasons = 40, []
-        if any(p.search(job.title) for p in seniority):
-            score += 15
-            reasons.append("nível sênior/lead")
-        found = [re.sub(r"\\b|\.?\?", "", p) for p, r in skills.items() if r.search(text)]
-        if found:
-            score += min(len(found) * 5, 25)
-            reasons.append("skills: " + ", ".join(found))
-        score += 10
-        reasons.append(" + ".join(x for x, ok in ((cfg["search"]["city"], in_city), ("remoto", remote)) if ok))
-        if job.description and any(p.search(job.description) for p in german):
-            score -= 25
-            reasons.append("⚠️ pede alemão fluente")
-        elif job.description and re.search(r"\b(the|and|you|with)\b", job.description[:500], re.I):
-            score += 3
-            reasons.append("descrição em inglês")
-        if job.published:
-            score += max(0, 7 - (today - job.published).days)
-        job.score, job.reasons = score, reasons
         kept.append(job)
     return kept
 
 
+def exclusion(job: Job, cfg) -> str:
+    """Why the job does not fit, from its description; empty when it fits."""
+    if not job.description:
+        return ""
+    e = {k: compile_all(v) for k, v in cfg["exclude"].items()}
+    has = lambda name: next((m.group(0) for p in e[name] if (m := p.search(job.description))), None)
+    if hit := has("german_required"):
+        return f"pede alemão fluente/C1+ (“{hit}”)"
+    if hit := has("driving_license"):
+        return f"pede carteira de motorista (“{hit}”)"
+    if not in_city(job, cfg):
+        if (hit := has("onsite")) and not has("full_remote"):
+            return f"fora de {cfg['search']['city']} e híbrida/presencial (“{hit}”)"
+        if not has("remote_words") and not has("full_remote"):
+            return f"fora de {cfg['search']['city']} e não diz que é remota"
+    return ""
+
+
+def score(job: Job, cfg) -> None:
+    # 0-100: base 50 (title and location already fit), seniority 15, skills 25,
+    # freshness 7, English description 3.
+    seniority = compile_all(cfg["score"]["seniority"])
+    skills = {p: re.compile(p, re.I) for p in cfg["score"]["skills"]}
+    text = f"{job.title} {job.description}"
+    points, reasons = 50, []
+    if any(p.search(job.title) for p in seniority):
+        points += 15
+        reasons.append("sênior/lead")
+    found = [re.sub(r"\\b|\.?\?", "", p) for p, r in skills.items() if r.search(text)]
+    if found:
+        points += min(len(found) * 5, 25)
+        reasons.append(", ".join(found))
+    if job.description and re.search(r"\b(the|and|you|with)\b", job.description[:500], re.I):
+        points += 3
+        reasons.append("descrição em inglês")
+    elif not job.description:
+        reasons.append("⚠️ descrição indisponível: confira idioma e modelo de trabalho")
+    if job.published:
+        points += max(0, 7 - (date.today() - job.published).days)
+    job.score, job.reasons = points, reasons
+
+
+SOURCE_RANK = {"Arbeitnow": 0, "LinkedIn": 1, "XING": 2, "Bundesagentur": 3}
+
+
 def dedupe(jobs: list[Job]) -> list[Job]:
-    best: dict[str, Job] = {}
+    """One copy per job: the one with a description, else from the most reliable source."""
+    groups: dict[str, list[Job]] = {}
     for job in jobs:
-        current = best.get(job.key)
-        # Prefer the copy with more information (description), then the higher score.
-        if current is None or (len(job.description), job.score) > (len(current.description), current.score):
-            if current and current.source != job.source:
-                job.reasons.append(f"também no {current.source}")
-            best[job.key] = job
-        elif job.source != current.source and f"também no {job.source}" not in current.reasons:
-            current.reasons.append(f"também no {job.source}")
-    return list(best.values())
+        groups.setdefault(job.key, []).append(job)
+    kept = []
+    for copies in groups.values():
+        copies.sort(key=lambda j: (-len(j.description), SOURCE_RANK.get(j.source, 9)))
+        best = copies[0]
+        best.remote = any(j.remote for j in copies)
+        best.also_on = sorted({j.source for j in copies} - {best.source})
+        kept.append(best)
+    return kept
 
 
 # --- output ------------------------------------------------------------------
@@ -285,20 +355,42 @@ def mark_new(jobs: list[Job]) -> None:
     seen_file.write_text(json.dumps(seen, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
 
 
-def to_markdown(jobs: list[Job], counts: dict, errors: dict) -> str:
-    md = [f"# Vagas — {date.today().isoformat()}", ""]
-    md.append(f"{len(jobs)} vagas, {sum(j.new for j in jobs)} novas desde a última busca. "
-              "Fontes: " + ", ".join(f"{s} ({n})" for s, n in counts.items()))
+def to_markdown(jobs: list[Job], excluded: list[Job], counts: dict, errors: dict, cfg) -> str:
+    city = cfg["search"]["city"]
+    md = [f"# Vagas — {date.today():%d/%m/%Y}", "",
+          f"**{len(jobs)} vagas** ({sum(j.new for j in jobs)} 🆕 novas desde a última busca) · "
+          f"{len(excluded)} descartadas pela descrição (lista no fim)", "",
+          "Fontes: " + ", ".join(f"{s} ({n})" for s, n in counts.items())]
     for s, e in errors.items():
         md.append(f"\n> ⚠️ {s} falhou: {e}")
-    md += ["", "| # | Score | Vaga | Empresa | Local | Publicada | Fonte | Por quê |",
-           "|---|---|---|---|---|---|---|---|"]
-    esc = lambda s: (s or "").replace("|", "/").strip()
-    for i, j in enumerate(jobs, 1):
-        title = f"{'🆕 ' if j.new else ''}[{esc(j.title)}]({j.url})"
-        md.append(f"| {i} | {j.score} | {title} | {esc(j.company)} | {esc(j.location)}"
-                  f"{' (remoto)' if j.remote else ''} | {j.published or ''} | {j.source} | "
-                  f"{esc('; '.join(j.reasons))} |")
+
+    def card(n: int, j: Job) -> list[str]:
+        where = j.location + (" · remoto" if j.remote and city.lower() not in j.location.lower() else "")
+        when = f" · {j.published:%d/%m}" if j.published else ""
+        source = j.source + (f" (também {', '.join(j.also_on)})" if j.also_on else "")
+        lines = [f"{n}. {'🆕 ' if j.new else ''}**[{j.title.strip()}]({j.url})** — {j.score}",
+                 f"   <br>{j.company} · {where}{when} · {source}"]
+        if j.reasons:
+            lines.append(f"   <br>_{' · '.join(j.reasons)}_")
+        return lines
+
+    n = 0
+    for heading, low, high in (("⭐ Combinam muito (80+)", 80, 999),
+                               ("👍 Boas (65–79)", 65, 79), ("Outras (< 65)", 0, 64)):
+        group = [j for j in jobs if low <= j.score <= high]
+        if not group:
+            continue
+        md += ["", f"## {heading}", ""]
+        for j in group:
+            n += 1
+            md += card(n, j)
+
+    if excluded:
+        md += ["", f"## Descartadas ({len(excluded)})", "",
+               "Ficaram de fora por algo na descrição. Se alguma não devia sair, me avise "
+               "para ajustar o `profile.toml`.", ""]
+        for j in sorted(excluded, key=lambda j: j.excluded):
+            md.append(f"- [{j.title.strip()}]({j.url}) — {j.company}, {j.location}: {j.excluded}")
     return "\n".join(md) + "\n"
 
 
@@ -339,7 +431,18 @@ def main() -> int:
             counts[job.source] = counts.get(job.source, 0) + 1
             jobs.append(job)
 
-    jobs = dedupe(score_jobs(jobs, cfg))
+    for job in jobs:
+        job.title = re.sub(r"\s+", " ", job.title).strip()
+    jobs = dedupe(prefilter(jobs, cfg))
+    add_descriptions(jobs)
+    excluded = []
+    for job in jobs:
+        job.excluded = exclusion(job, cfg)
+        if job.excluded:
+            excluded.append(job)
+        else:
+            score(job, cfg)
+    jobs = [j for j in jobs if not j.excluded]
     if args.remote_only:
         jobs = [j for j in jobs if j.remote or "remote" in j.location.lower()]
     if args.berlin_only:
@@ -350,7 +453,7 @@ def main() -> int:
 
     out = ROOT / "results" / f"{date.today().isoformat()}.md"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(to_markdown(jobs, counts, errors))
+    out.write_text(to_markdown(jobs, excluded, counts, errors, cfg))
     print(out)
     return 0
 

@@ -283,12 +283,15 @@ def prefilter(jobs: list[Job], cfg) -> list[Job]:
 
 def exclusion(job: Job, cfg) -> str:
     """Why the job does not fit, from its description; empty when it fits."""
-    if not job.description:
-        return ""
     e = {k: compile_all(v) for k, v in cfg["exclude"].items()}
+    if not job.description:
+        hit = next((m.group(0) for p in e["other_fields"] if (m := p.search(job.title))), None)
+        return f"setor fora do seu perfil (“{hit}”)" if hit else ""
     has = lambda name: next((m.group(0) for p in e[name] if (m := p.search(job.description))), None)
     if hit := has("german_required"):
         return f"pede alemão acima de B1 (“{hit}”)"
+    if (m := next((m for p in e["other_fields"] if (m := p.search(f"{job.title} {job.description}"))), None)):
+        return f"setor fora do seu perfil (“{m.group(0)}”)"
     if hit := has("driving_license"):
         return f"pede carteira de motorista (“{hit}”)"
     if not in_city(job, cfg):

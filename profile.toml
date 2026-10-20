@@ -89,3 +89,11 @@ full_remote = [
   '100 ?% (home ?office|mobil)', 'deutschlandweit',
 ]
 remote_words = ['remote', 'home ?office', 'mobiles arbeiten', 'mobil arbeiten']
+
+# Fields far from your web/API/mobile QA profile, checked in title and description.
+other_fields = [
+  'flight', 'avionic', 'avionik', 'aerospace', 'luftfahrt', 'aircraft', 'flugzeug', 'do-178',
+  'embedded', 'firmware', 'hardware-in-the-loop', '\bhil\b', 'steuerger(ä|ae)t', 'iso 26262',
+  'automotive', 'netzwerktest', 'network test', 'virtual reality', 'robotic', 'euv',
+  'integration (&|and|und) verification',
+]

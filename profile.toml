@@ -58,15 +58,15 @@ skills = [
 # Jobs whose description matches any of these are left out (and listed at the end of the
 # results with the reason). Matching is case-insensitive.
 
-# Fluent / C1+ German required (your German is B1).
+# German above B1 required (B2, C1, C2, fluent...): your German is B1.
 german_required = [
   'flie(ß|ss)end(e|en|es)?\s+deutsch', 'deutsch\w*\s+(\w+\s+)?flie(ß|ss)end',
   'verhandlungssicher', 'muttersprach', 'native german', 'german native',
-  'deutsch[^.;\n]{0,100}\b[c][12]\b', '\b[c][12]\b[^.;\n]{0,40}deutsch',
+  'deutsch[^.;\n]{0,100}\b(b2|c1|c2)\b', '\b(b2|c1|c2)\b[^.;\n]{0,40}deutsch',
   '(sehr )?gute[n]? deutschkenntnisse', 'deutschkenntnisse[^.;\n]{0,30}(sehr gut|gut|sicher|flie)',
-  'beherrschst deutsch', '(kommunizierst|sprichst|schreibst)[^.;\n]{0,20}sicher[^.;\n]{0,10}deutsch',
+  'beherrschst deutsch', '(kommunizierst|sprichst|schreibst)[^.;\n]{0,80}sicher[^.;\n]{0,10}deutsch', 'sicher(e|en)?\s+(auf |in )?deutsch',
   'deutsch und englisch[^.;\n]{0,40}(sehr gut|gut|flie|verhandlungs|sicher)',
-  'fluent (in )?german', 'fluency in german', 'german[^.;\n]{0,40}\b(c1|c2|native|fluent|fluency|proficien)',
+  'fluent (in )?german', 'fluency in german', 'german[^.;\n]{0,40}\b(b2|c1|c2|native|fluent|fluency|proficien)', '\b(b2|c1|c2)\b[^.;\n]{0,20}german',
   '(good|very good|excellent|strong|professional|business|solid)\s+(command of |knowledge of |level of )?german\b(?!\s+(class|course|lesson))',
   'german (and|&) english (skills|communication|language)',
 ]

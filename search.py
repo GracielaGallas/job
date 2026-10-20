@@ -288,7 +288,7 @@ def exclusion(job: Job, cfg) -> str:
     e = {k: compile_all(v) for k, v in cfg["exclude"].items()}
     has = lambda name: next((m.group(0) for p in e[name] if (m := p.search(job.description))), None)
     if hit := has("german_required"):
-        return f"pede alemão fluente/C1+ (“{hit}”)"
+        return f"pede alemão acima de B1 (“{hit}”)"
     if hit := has("driving_license"):
         return f"pede carteira de motorista (“{hit}”)"
     if not in_city(job, cfg):
@@ -343,6 +343,14 @@ def dedupe(jobs: list[Job]) -> list[Job]:
 
 # --- output ------------------------------------------------------------------
 
+def load_applied() -> tuple[set[str], set[str]]:
+    """Keys and URLs of jobs Graciela already applied to (data/applied.json)."""
+    path = ROOT / "data" / "applied.json"
+    applied = json.loads(path.read_text()) if path.exists() else []
+    keys = {Job("", a["title"], a["company"], "", "").key for a in applied}
+    return keys, {a["url"] for a in applied if a.get("url")}
+
+
 def mark_new(jobs: list[Job]) -> None:
     seen_file = ROOT / "data" / "seen.json"
     seen = json.loads(seen_file.read_text()) if seen_file.exists() else {}
@@ -355,11 +363,12 @@ def mark_new(jobs: list[Job]) -> None:
     seen_file.write_text(json.dumps(seen, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
 
 
-def to_markdown(jobs: list[Job], excluded: list[Job], counts: dict, errors: dict, cfg) -> str:
+def to_markdown(jobs: list[Job], excluded: list[Job], applied: int, counts: dict, errors: dict, cfg) -> str:
     city = cfg["search"]["city"]
     md = [f"# Vagas — {date.today():%d/%m/%Y}", "",
           f"**{len(jobs)} vagas** ({sum(j.new for j in jobs)} 🆕 novas desde a última busca) · "
-          f"{len(excluded)} descartadas pela descrição (lista no fim)", "",
+          f"{len(excluded)} descartadas pela descrição (lista no fim) · "
+          f"{applied} já aplicadas (ocultas)", "",
           "Fontes: " + ", ".join(f"{s} ({n})" for s, n in counts.items())]
     for s, e in errors.items():
         md.append(f"\n> ⚠️ {s} falhou: {e}")
@@ -435,6 +444,10 @@ def main() -> int:
         job.title = re.sub(r"\s+", " ", job.title).strip()
     jobs = dedupe(prefilter(jobs, cfg))
     add_descriptions(jobs)
+    applied_keys, applied_urls = load_applied()
+    before = len(jobs)
+    jobs = [j for j in jobs if j.key not in applied_keys and j.url not in applied_urls]
+    applied = before - len(jobs)
     excluded = []
     for job in jobs:
         job.excluded = exclusion(job, cfg)
@@ -453,7 +466,7 @@ def main() -> int:
 
     out = ROOT / "results" / f"{date.today().isoformat()}.md"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(to_markdown(jobs, excluded, counts, errors, cfg))
+    out.write_text(to_markdown(jobs, excluded, applied, counts, errors, cfg))
     print(out)
     return 0
 

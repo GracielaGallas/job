@@ -24,7 +24,7 @@ Precisa só de Python 3.11+ (sem dependências). O resultado vai para `results/<
 |---|---|---|
 | Bundesagentur für Arbeit | API pública (`rest.arbeitsagentur.de`, v6) | Berlim + raio, e home office na Alemanha toda |
 | Arbeitnow | API pública | Traz descrição completa, então o score de skills e idioma é mais preciso |
-| LinkedIn | busca pública sem login | Sem descrição: o score usa só título e local |
+| LinkedIn | busca pública sem login + página pública de cada vaga | |
 | XING | página de busca pública | Sem descrição |
 
 Indeed, Glassdoor e GermanTechJobs bloqueiam acesso automatizado (403) e ficaram de fora.
@@ -39,7 +39,7 @@ Tudo que define a busca está em `profile.toml` e pode ser editado:
   software, para não trazer QA de fábrica ou laboratório.
 - **title_none**: descarta júnior, estágio, Werkstudent, hardware, pharma etc.
 - **exclude**: lido na descrição de cada vaga (o script abre a vaga no LinkedIn, XING e
-  Bundesagentur). A vaga sai quando pede alemão acima de B1 (B2, C1, fluente…), carteira de motorista, é de outro setor
+  Bundesagentur). A vaga sai quando pede alemão acima de B1 (B2, C1, fluente…) ou a descrição é em alemão, carteira de motorista, é de outro setor
   (aviação, embedded, hardware, automotive, rede…), ou
   quando é fora de Berlim e híbrida/presencial (ou não diz que é remota). As descartadas
   aparecem no fim do resultado com o trecho que causou a exclusão.

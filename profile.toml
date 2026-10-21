@@ -47,6 +47,9 @@ title_none = [
 [score]
 # Extra points when the title signals the level you are aiming for.
 seniority = ['senior', '\blead\b', 'team ?lead', 'head of', 'principal', 'staff', 'sr\.?\b', 'leitung', 'manager']
+# Phrases saying German is a plus (kept, but flagged).
+german_plus = ['german[^.;\n]{0,40}(plus|advantage|nice to have|desirable|bonus|beneficial)',
+  '(plus|advantage|nice to have|bonus)[^.;\n]{0,30}german']
 # Skills from the CV: each one found in title/description adds points.
 skills = [
   'playwright', 'typescript', 'java\b', 'selenium', 'rest ?assured', 'cypress',
@@ -63,7 +66,8 @@ german_required = [
   'flie(ß|ss)end(e|en|es)?\s+deutsch', 'deutsch\w*\s+(\w+\s+)?flie(ß|ss)end',
   'verhandlungssicher', 'muttersprach', 'native german', 'german native',
   'deutsch[^.;\n]{0,100}\b(b2|c1|c2)\b', '\b(b2|c1|c2)\b[^.;\n]{0,40}deutsch',
-  '(sehr )?gute[n]? deutschkenntnisse', 'deutschkenntnisse[^.;\n]{0,30}(sehr gut|gut|sicher|flie)',
+  '(sehr )?gute[n]? deutsch(-|kenntnisse)', 'deutschkenntnisse[^.;\n]{0,30}(sehr gut|gut|sicher|flie)',
+  'deutsch- und englisch', 'german (language )?(is )?(required|mandatory|a must|essential)',
   'beherrschst deutsch', '(kommunizierst|sprichst|schreibst)[^.;\n]{0,80}sicher[^.;\n]{0,10}deutsch', 'sicher(e|en)?\s+(auf |in )?deutsch',
   'deutsch und englisch[^.;\n]{0,40}(sehr gut|gut|flie|verhandlungs|sicher)',
   'fluent (in )?german', 'fluency in german', 'german[^.;\n]{0,40}\b(b2|c1|c2|native|fluent|fluency|proficien)', '\b(b2|c1|c2)\b[^.;\n]{0,20}german',
@@ -84,7 +88,7 @@ onsite = [
   'days? (per|a) week (in|at) (the|our) office', 'tage (pro|die|in der) woche (im|vor)',
 ]
 full_remote = [
-  'fully remote', 'full[- ]remote', '100 ?% remote', 'remote[- ]first', 'remote only',
+  '(?<!not )fully remote', '(?<!not )full[- ]remote', '100 ?% remote', 'remote[- ]first',
   'vollst(ä|ae)ndig remote', 'komplett remote', 'ortsunabh(ä|ae)ngig', 'work from anywhere',
   '100 ?% (home ?office|mobil)', 'deutschlandweit',
 ]

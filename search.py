@@ -281,6 +281,22 @@ def prefilter(jobs: list[Job], cfg) -> list[Job]:
     return kept
 
 
+GERMAN_WORDS = set("der die das und mit für wir du sie ist sind zu von auf ein eine einen bei dein deine "
+                   "deinen unser unsere ihre im sowie oder auch nicht werden hast bist dich dir".split())
+ENGLISH_WORDS = set("the and with for we you our is are to of in a an will your be as on this that "
+                    "or have who what".split())
+
+
+def language(text: str) -> str:
+    """'de' or 'en', by counting common words; '' when there is too little text."""
+    words = re.findall(r"[a-zäöüß]+", text.lower())
+    de = sum(w in GERMAN_WORDS for w in words)
+    en = sum(w in ENGLISH_WORDS for w in words)
+    if de + en < 15:
+        return ""
+    return "de" if de > en else "en"
+
+
 def exclusion(job: Job, cfg) -> str:
     """Why the job does not fit, from its description; empty when it fits."""
     e = {k: compile_all(v) for k, v in cfg["exclude"].items()}
@@ -290,6 +306,9 @@ def exclusion(job: Job, cfg) -> str:
     has = lambda name: next((m.group(0) for p in e[name] if (m := p.search(job.description))), None)
     if hit := has("german_required"):
         return f"pede alemão acima de B1 (“{hit}”)"
+    # A job ad written in German expects German, as a requirement or a "plus".
+    if language(job.description) == "de":
+        return "descrição em alemão"
     if (m := next((m for p in e["other_fields"] if (m := p.search(f"{job.title} {job.description}"))), None)):
         return f"setor fora do seu perfil (“{m.group(0)}”)"
     if hit := has("driving_license"):
@@ -304,7 +323,7 @@ def exclusion(job: Job, cfg) -> str:
 
 def score(job: Job, cfg) -> None:
     # 0-100: base 50 (title and location already fit), seniority 15, skills 25,
-    # freshness 7, English description 3.
+    # freshness 7, English description 3 (German ones are excluded).
     seniority = compile_all(cfg["score"]["seniority"])
     skills = {p: re.compile(p, re.I) for p in cfg["score"]["skills"]}
     text = f"{job.title} {job.description}"
@@ -316,10 +335,13 @@ def score(job: Job, cfg) -> None:
     if found:
         points += min(len(found) * 5, 25)
         reasons.append(", ".join(found))
-    if job.description and re.search(r"\b(the|and|you|with)\b", job.description[:500], re.I):
+    if job.description:
         points += 3
         reasons.append("descrição em inglês")
-    elif not job.description:
+        if hit := next((m.group(0) for p in compile_all(cfg["score"]["german_plus"])
+                        if (m := p.search(job.description))), None):
+            reasons.append(f"⚠️ alemão é diferencial (“{hit}”)")
+    else:
         reasons.append("⚠️ descrição indisponível: confira idioma e modelo de trabalho")
     if job.published:
         points += max(0, 7 - (date.today() - job.published).days)
@@ -470,6 +492,11 @@ def main() -> int:
     out = ROOT / "results" / f"{date.today().isoformat()}.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(to_markdown(jobs, excluded, applied, counts, errors, cfg))
+    # Full descriptions of the kept jobs, for Claude to read before presenting them.
+    review = ROOT / "data" / "last_run.json"
+    review.write_text(json.dumps([{"n": i, "title": j.title, "company": j.company, "url": j.url,
+                                   "description": j.description} for i, j in enumerate(jobs, 1)],
+                                 indent=1, ensure_ascii=False))
     print(out)
     return 0
 

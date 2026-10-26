@@ -381,9 +381,8 @@ def mark_new(jobs: list[Job]) -> None:
     seen = json.loads(seen_file.read_text()) if seen_file.exists() else {}
     today = date.today().isoformat()
     for job in jobs:
-        if job.key not in seen:
-            job.new = True
-            seen[job.key] = today
+        # Still new when first seen earlier today (e.g. the search was rerun).
+        job.new = seen.setdefault(job.key, today) == today
     seen_file.parent.mkdir(exist_ok=True)
     seen_file.write_text(json.dumps(seen, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
 

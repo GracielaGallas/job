@@ -23,7 +23,7 @@ queries = [
 # Titles that clearly mean software QA: always kept.
 title_strong = [
   '\bqa\b', 'quality engineer', 'test ?automation', 'testautomatisierung',
-  'automation engineer', '\bsdet\b', 'software ?test', 'test ?engineer',
+  '(qa|test|quality) automation engineer', '\bsdet\b', 'software ?test', 'test ?engineer',
   'test ?analyst', 'test ?lead', 'software development engineer in test',
 ]
 # Generic QA/test titles (also used for factory/lab QA in Germany): kept only when
@@ -41,7 +41,7 @@ title_none = [
   'junior', 'ausbildung', 'azubi', 'trainee', 'duales studium', 'abschlussarbeit',
   'thesis', 'hardware', 'mechani', 'fahrzeug', 'lebensmittel', 'pharma', '\bgmp\b',
   '\blabor', 'elektro', 'electrical', 'medizinprodukt', 'chemi', 'penetration',
-  'pentest', 'client service', 'customer service', 'absolvent', 'graduate',
+  'pentest', 'client service', 'customer service', 'absolvent', 'graduate', 'supplier', 'casting',
 ]
 
 [score]
@@ -70,7 +70,7 @@ german_required = [
   'deutsch- und englisch', 'german (language )?(is )?(required|mandatory|a must|essential)',
   'beherrschst deutsch', '(kommunizierst|sprichst|schreibst)[^.;\n]{0,80}sicher[^.;\n]{0,10}deutsch', 'sicher(e|en)?\s+(auf |in )?deutsch',
   'deutsch und englisch[^.;\n]{0,40}(sehr gut|gut|flie|verhandlungs|sicher)',
-  'fluent (in )?german', 'fluency in german', 'german[^.;\n]{0,40}\b(b2|c1|c2|native|fluent|fluency|proficien)', '\b(b2|c1|c2)\b[^.;\n]{0,20}german',
+  'fluent (in )?german', 'fluency in german', 'fluen(t|cy)[^.;\n]{0,25}\band german\b', 'german[^.;\n]{0,40}\b(b2|c1|c2|native|fluent|fluency|proficien)', '\b(b2|c1|c2)\b[^.;\n]{0,20}german',
   '(good|very good|excellent|strong|professional|business|solid)\s+(command of |knowledge of |level of )?german\b(?!\s+(class|course|lesson))',
   'german (and|&) english (skills|communication|language)',
 ]
